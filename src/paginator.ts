@@ -58,6 +58,9 @@ export class PagePromulgator extends StatePromulgator<PaginatorState> {
   }
 }
 
+/**
+ * Extensible controls for pagination
+ */
 export class PageInputs extends HTMLElement {
   DEFAULT_PAGE_SIZE: number = 13; //This shouldn't be used in the constructor because subclasses need a chance to overwrite it
   protected PAGE_SIZE_OPTIONS: Array<number> = [13,21,34,55,89,144,233];
@@ -216,6 +219,15 @@ export class PaginationEvent extends Event {
   }
 }
 
+/**
+ * Web Component for pagination controls
+ * Shows the user 5 buttons corresponding to the first, previous, current, next, and last pages
+ * The buttons are disabled if they would not change the pagination. For example, when the user is on the first page, the first, previous, and current buttons are disabled.
+ * Provides a select input for choosing the page size
+ * Takes an attribute "cardinality" representing the total number of rows across all pages in the paginated table
+ * Emits a PaginationEvent when the user requests a different page to be shown
+ * If you want multiple sets of controls to share a state object, use the underlying PageInputs instead of PageController
+ */
 export class PageController extends PageInputs {
   static observedAttributes: Array<string> = ["cardinality"];
   private pager: PagePromulgator = new PagePromulgator(this.DEFAULT_PAGE_SIZE, 0);
@@ -253,203 +265,3 @@ export class PageController extends PageInputs {
   }
 }
 
-//const DEFAULT_PAGE_SIZE: number = 13;
-//
-///**
-// * Web Component for pagination controls
-// * Shows the user 5 buttons corresponding to the first, previous, current, next, and last pages
-// * The buttons are disabled if they would not change the pagination. For example, when the user is on the first page, the first, previous, and current buttons are disabled.
-// * Provides a select input for choosing the page size
-// * Takes an attribute "cardinality" representing the total number of rows across all pages in the paginated table
-// * Emits a PaginationEvent when the user requests a different page to be shown
-// */
-//export class OldPaginator extends HTMLElement {
-//  static observedAttributes: Array<string> = ["cardinality"];
-//  //TODO: make DEFAULT_PAGE_SIZE a public property again, but put it in state in connectedCallback (NOT CONSTRUCTOR) for the sake of base-subclass execution order
-//  DEFAULT_PAGE_SIZE: number = 13;
-//  
-//  private state: PagePromulgator = new PagePromulgator(DEFAULT_PAGE_SIZE, 0); //Note that this initilizer is executed before any subclass's initializers or constructors
-//
-//  constructor() {
-//    super();
-//    this.state.registerCallback((newState: PaginatorState)=>{
-//      this.dispatchEvent(new PaginationEvent(newState.skip, newState.take));
-//    }, ['skip', 'take'], []);
-//  }
-//  //TODO: put pagination logic in a separate class and compose. This way it can be extended to have multiple pagination controls reflecting...
-//  /** Declare content of the button representing the first page */
-//  protected labelFirst(first: HTMLElement): void {
-//    first.textContent = "first(1)";
-//  }
-//  /** Declare content of the button reprsenting the second page, depending on the current page */
-//  protected labelPrev(prev: HTMLElement, currentPage: number): void {
-//    prev.textContent = `previous(${Math.max(1, currentPage-1)})`;
-//  }
-//  /** Declare content of the button representing the current page */
-//  protected labelCurrent(btn: HTMLElement, pageNumber: number): void {
-//    btn.textContent = `current(${pageNumber})`;
-//  }
-//  /** Declare content of the button representing the next page */
-//  protected labelNext(btn: HTMLElement, currentPage: number, lastPage: number): void {
-//    btn.textContent = `next(${Math.min(currentPage+1, lastPage)})`;
-//  }
-//  /** Declare content of the button representing the last page */
-//  protected labelLast(btn: HTMLElement, lastPage: number): void {
-//    btn.textContent = `last(${lastPage})`;
-//  }
-//
-//  /** Update the page size */
-//  setPageSize(pageSize: number): void { //TODO: get rid of this
-//    const {skip, cardinality}: PaginatorState = this.state.state;
-//    this.state.updateState({pageSize, take: computeTake(skip, pageSize, cardinality)});
-//  }
-//  /** Declare the element that sets the page size */
-//  protected declarePageSizeChooser(): Node {
-//    const container = document.createElement('div');
-//    const label = document.createElement('label');
-//    label.setAttribute('for', 'page-sizer');
-//    label.textContent = 'Page Size:';
-//    const selector = document.createElement('select');
-//    selector.className = 'paginationSelector';
-//    selector.setAttribute('id', 'page-sizer');
-//    selector.replaceChildren(...[13,21,34,55,89,144,233].map((choice: number)=>{
-//      const opt = document.createElement('option');
-//      const val = String(choice);
-//      opt.setAttribute('value', val);
-//      opt.textContent = val;
-//      return opt;
-//    }));
-//    selector.value = String(DEFAULT_PAGE_SIZE);
-//    selector.addEventListener('input', (e: InputEvent)=>{
-//      const newPageSize = parseInt(selector.value);
-//      if (isNaN(newPageSize)) {
-//        console.warn(`PageController: pageSize ${selector.value} cannot be converted to number`);
-//      }
-//      else {
-//        this.setPageSize(newPageSize);
-//      }
-//    });
-//    container.replaceChildren(label, selector);
-//    return container;
-//  }
-//
-//  /** Executes after being attached to the DOM */
-//  connectedCallback() { //TODO: consider moving all this to the constructor so it doesn't have to re-run when re-attached
-//    const shadow = this.attachShadow({ mode: "open"});
-//    const container = document.createElement('div');
-//    container.className = 'paginationContainer';
-//
-//    const pageNumberKey = this.state.registerCallback((newState: PaginatorState)=>{
-//      return Math.ceil(newState.skip/newState.pageSize)+1;
-//    }, [], []);
-//    const pageCountKey = this.state.registerCallback((newState: PaginatorState)=>{
-//      return Math.max(Math.ceil(newState.cardinality/newState.pageSize), 1);
-//    }, [], []);
-//
-//    // Button for the first page
-//    const first = document.createElement('button');
-//    first.setAttribute('type', 'button');
-//    first.className = 'paginationButton';
-//    first.addEventListener('click', ()=>{
-//      this.state.updateState({skip: 0, take: computeTake(0, this.state.state.pageSize, this.state.state.cardinality)});
-//    });
-//    this.labelFirst(first);
-//    // Button for the previous page
-//    const prev = document.createElement('button');
-//    prev.setAttribute('type', 'button');
-//    prev.className = 'paginationButton';
-//    prev.addEventListener('click', ()=>{
-//      const {skip, pageSize, cardinality}: PaginatorState = this.state.state;
-//      const newSkip = Math.max(0, skip-pageSize);
-//      this.state.updateState({skip: newSkip, take: skip-newSkip});
-//    });
-//    this.state.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
-//      const pageNum = intermediateValues.get(pageNumberKey) as number;
-//      this.labelPrev(prev, pageNum);
-//    }, ['skip', 'pageSize'], [pageNumberKey]);
-//    //Button for the current page
-//    const current = document.createElement('button');
-//    current.setAttribute('type', 'button');
-//    current.className = 'paginationButton';
-//    current.setAttribute('disabled', 'true');
-//    this.state.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
-//      const pageNum = intermediateValues.get(pageNumberKey) as number;
-//      this.labelCurrent(current, pageNum);
-//    }, ['skip', 'pageSize'], [pageNumberKey]);
-//    //Button for the next page
-//    const next = document.createElement('button');
-//    next.setAttribute('type', 'button');
-//    next.className = 'paginationButton';
-//    next.addEventListener('click', ()=>{
-//      const {skip, pageSize, cardinality, take}: PaginatorState = this.state.state;
-//      const newSkip = skip+take; 
-//      this.state.updateState({skip: newSkip, take: computeTake(newSkip, pageSize, cardinality)});
-//    });
-//    this.state.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
-//      const pageNum = intermediateValues.get(pageNumberKey) as number;
-//      const pageCount = intermediateValues.get(pageCountKey) as number;
-//      this.labelNext(next, pageNum, pageCount);
-//    }, ['skip', 'pageSize', 'cardinality'], [pageNumberKey, pageCountKey]);
-//    //Button for the last page
-//    const last = document.createElement('button');
-//    last.setAttribute('type', 'button');
-//    last.className = 'paginationButton';
-//    last.addEventListener('click', ()=>{
-//      const {pageSize, cardinality}: PaginatorState = this.state.state;
-//      const newSkip = Math.max(cardinality-pageSize, 0);
-//      this.state.updateState({skip: newSkip, take: computeTake(newSkip, pageSize, cardinality)});
-//    });
-//    this.state.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
-//      const pageCount = intermediateValues.get(pageCountKey) as number;
-//      this.labelLast(last, pageCount);
-//    }, ['pageSize', 'cardinality'], [pageCountKey]);
-//
-//    // Disable first and prev page buttons when on the first page
-//    this.state.registerCallback((newState: PaginatorState, oldState: PaginatorState)=>{
-//      if (newState.skip === 0 && oldState.skip !== 0) {
-//        first.setAttribute('disabled', 'true');
-//        prev.setAttribute('disabled', 'true');
-//      }
-//      else if (newState.skip !== 0 && oldState.skip === 0) {
-//        first.removeAttribute('disabled');
-//        prev.removeAttribute('disabled');
-//      }
-//    }, ['skip'], []);
-//    // Initial skip is 0, so disable first and prev now
-//    first.setAttribute('disabled', 'true');
-//    prev.setAttribute('disabled', 'true');
-//    // Disable next and last page buttons when on the last page
-//    this.state.registerCallback((newState: PaginatorState, oldState: PaginatorState)=>{
-//      const isLastPage = newState.skip + newState.take >= newState.cardinality;
-//      const wasLastPage = oldState.skip + oldState.take >= oldState.cardinality;
-//      if (isLastPage && ! wasLastPage) {
-//        next.setAttribute('disabled', 'true');
-//        last.setAttribute('disabled', 'true');
-//      }
-//      else if (wasLastPage && !isLastPage) {
-//        next.removeAttribute('disabled');
-//        last.removeAttribute('disabled');
-//      }
-//    }, ['skip', 'take', 'cardinality'], [])
-//
-//    // Promulgate initial state
-//    this.state.updateState(this.state.state, true);
-//
-//    container.replaceChildren(first, prev, current, next, last, this.declarePageSizeChooser());
-//    shadow.replaceChildren(container);
-//
-//  }
-//
-//  /** Executes when an element of observedAttributes is assigned or changed */
-//  attributeChangedCallback(attributeName: string, oldValue: string, newValue: string) {
-//    if (attributeName === "cardinality") {
-//      const cardinality = parseInt(newValue);
-//      if (isNaN(cardinality)) {
-//        console.warn(`PageController: cardinality ${newValue} cannot be converted to integer`);
-//      }
-//      else {
-//        this.state.updateState({cardinality});
-//      }
-//    }
-//  }
-//}
