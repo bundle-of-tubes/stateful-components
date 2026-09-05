@@ -1,7 +1,7 @@
 {
   "name": "@bundle-of-tubes/stateful-components",
   "version": "0.0.1",
-  "private": true,
+  "private": false,
   "description": "A library of Web Components",
   "homepage": "https://github.com/bundle-of-tubes/stateful-components",
   "keywords": [
