@@ -1,0 +1,29 @@
+{
+  "name": "@bundle-of-tubes/stateful-components",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A library of Web Components",
+  "homepage": "https://github.com/bundle-of-tubes/stateful-components",
+  "keywords": [
+    "javascript",
+    "typescript",
+    "component",
+    "state"
+  ],
+  "license": "MIT",
+  "files": ["dist/"],
+  "main": "dist/exports.js",
+  "types": "dist/exports.d.ts",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bundle-of-tubes/stateful-components"
+  },
+  "scripts": {
+    "prepack": "tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "@bundle-of-tubes/state-promulgator": "0.0.1",
+    "typescript": "^7.0.2"
+  }
+}
