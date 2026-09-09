@@ -60,6 +60,7 @@ export class PagePromulgator extends StatePromulgator<PaginatorState> {
 
 /**
  * Extensible controls for pagination
+ * Uses page numbers to label the buttons
  */
 export class PageInputs extends HTMLElement {
   DEFAULT_PAGE_SIZE: number = 13; //This shouldn't be used in the constructor because subclasses need a chance to overwrite it
@@ -206,6 +207,164 @@ export class PageInputs extends HTMLElement {
   }
 }
 
+/**
+ * Extensible controls for pagination
+ * Uses row ranges to label the buttons
+ */
+export class PageInputsV2 extends HTMLElement {
+  DEFAULT_PAGE_SIZE: number = 27; //This shouldn't be used in the constructor because subclasses need a chance to overwrite it
+  protected PAGE_SIZE_OPTIONS: Array<number> = [8,27,64,125,216];
+  protected firstButton: HTMLElement = document.createElement('button');
+  protected prevButton: HTMLElement = document.createElement('button');
+  protected currentButton: HTMLElement = document.createElement('button');
+  protected nextButton: HTMLElement = document.createElement('button');
+  protected lastButton: HTMLElement = document.createElement('button');
+  protected pageSizeSelect: HTMLSelectElement = document.createElement('select');
+
+  /** Declare content of the button representing the first page */
+  protected labelFirst(would_be_take: number, disabled: boolean): void {
+    if (disabled) {
+      this.firstButton.textContent = 'beginning';
+      this.firstButton.setAttribute('disabled', 'true');
+    }
+    else {
+      this.firstButton.textContent = `beginning(1-${would_be_take})`;
+      this.firstButton.removeAttribute('disabled');
+    }
+  }
+  /** Declare content of the button reprsenting the second page*/
+  protected labelPrev(would_be_skip: number, would_be_take: number, disabled: boolean): void {
+    if (disabled) {
+      this.prevButton.textContent = 'previous';
+      this.prevButton.setAttribute('disabled', 'true');
+    }
+    else {
+      this.prevButton.textContent = `previous(${1+would_be_skip}-${would_be_skip+would_be_take})`;
+      this.prevButton.removeAttribute('disabled');
+    }
+  }
+  /** Declare content of the button representing the current page */
+  protected labelCurrent(skip: number, take: number): void {
+    this.currentButton.textContent = `showing ${1+skip}-${skip+take}`;
+  }
+  /** Declare content of the button representing the next page */
+  protected labelNext(would_be_skip: number, would_be_take: number, disabled: boolean): void {
+    if (disabled) {
+      this.nextButton.textContent = 'next';
+      this.nextButton.setAttribute('disabled', 'true');
+    }
+    else {
+      this.nextButton.textContent = `next(${1+would_be_skip}-${would_be_skip+would_be_take})`;
+      this.nextButton.removeAttribute('disabled');
+    }
+  }
+  /** Declare content of the button representing the last page */
+  protected labelLast(would_be_skip: number, cardinality: number, disabled: boolean): void {
+    if (disabled) {
+      this.lastButton.textContent = 'end';
+      this.lastButton.setAttribute('disabled', 'true');
+    }
+    else {
+      this.lastButton.textContent = `end(${1+would_be_skip}-${cardinality})`;
+      this.lastButton.removeAttribute('disabled');
+    }
+  }
+
+  /** Associate this component with a PagePromulgator */
+  assignPagePromulgator(pager: PagePromulgator) {
+    // First Button
+    this.firstButton.addEventListener('click', ()=>{
+      pager.first();
+    });
+    pager.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
+      this.labelFirst(computeTake(0, newState.pageSize, newState.cardinality), newState.skip === 0);
+    }, ['pageSize', 'cardinality', 'skip'], []);
+    // Prev Button
+    this.prevButton.addEventListener('click', ()=>{
+      pager.prev();
+    });
+    pager.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
+      const would_be_skip = Math.max(0, newState.skip-newState.pageSize);
+      const would_be_take = newState.skip - would_be_skip;
+      this.labelPrev(would_be_skip, would_be_take, newState.skip === 0);
+    }, ['skip', 'pageSize'], []);
+    // Current Button
+    pager.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
+      this.labelCurrent(newState.skip, newState.take);
+    }, ['skip', 'take'], []);
+    // Next Button
+    this.nextButton.addEventListener('click', ()=>{
+      pager.next();
+    });
+    pager.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
+      const would_be_skip = newState.skip + newState.take;
+      const would_be_take = computeTake(would_be_skip, newState.pageSize, newState.cardinality);
+      this.labelNext(would_be_skip, would_be_take, newState.skip + newState.take >= newState.cardinality);
+    }, ['skip', 'take', 'pageSize', 'cardinality'], []);
+    // Last Button
+    this.lastButton.addEventListener('click', ()=>{
+      pager.last();
+    });
+    pager.registerCallback((newState: PaginatorState, oldState: PaginatorState, intermediateValues: Map<symbol, any>)=>{
+      const would_be_skip = Math.max(newState.cardinality - newState.pageSize, 0);
+      this.labelLast(would_be_skip, newState.cardinality, newState.skip + newState.take >= newState.cardinality);
+    }, ['pageSize', 'cardinality', 'take', 'skip'], []);
+    // Page Size Select
+    this.pageSizeSelect.addEventListener('input', (e: InputEvent)=>{
+      const newPageSize = parseInt(this.pageSizeSelect.value);
+      if (isNaN(newPageSize)) {
+        console.warn(`PageController: pageSize ${this.pageSizeSelect.value} cannot be converted to number`);
+      }
+      else {
+        pager.setPageSize(newPageSize);
+      }
+    });
+    pager.registerCallback((newState: PaginatorState)=>{
+      this.pageSizeSelect.value = String(newState.pageSize); //should not trigger an input event, and value comparisson also prevents infinite loops
+    }, ['pageSize'], []);
+  }
+
+  connectedCallback() {
+    const shadow = this.attachShadow({ mode: "open"});
+    const container = document.createElement('div');
+    container.className = 'paginationContainer';
+    // First Page Button
+    this.firstButton.setAttribute('type', 'button');
+    this.firstButton.className = 'paginationButton';
+    // Button for the previous page
+    this.prevButton.setAttribute('type', 'button');
+    this.prevButton.className = 'paginationButton';
+    //Button for the current page
+    this.currentButton.setAttribute('type', 'button');
+    this.currentButton.className = 'paginationButton';
+    this.currentButton.setAttribute('disabled', 'true');
+    //Button for the next page
+    this.nextButton.setAttribute('type', 'button');
+    this.nextButton.className = 'paginationButton';
+    //Button for the last page
+    this.lastButton.setAttribute('type', 'button');
+    this.lastButton.className = 'paginationButton';
+    // Page Size Select
+    const pageSizeLabel = document.createElement('label');
+    pageSizeLabel.setAttribute('for', 'page-sizer');
+    pageSizeLabel.textContent = 'Page Size:';
+    this.pageSizeSelect.className = 'paginationSelector';
+    this.pageSizeSelect.setAttribute('id', 'page-sizer');
+    this.pageSizeSelect.replaceChildren(...this.PAGE_SIZE_OPTIONS.map((choice: number)=>{
+      const opt = document.createElement('option');
+      const val = String(choice);
+      opt.setAttribute('value', val);
+      opt.textContent = val;
+      return opt;
+    }));
+    this.pageSizeSelect.value = String(this.DEFAULT_PAGE_SIZE);
+
+    container.replaceChildren(this.firstButton, this.prevButton, this.currentButton, this.nextButton, this.lastButton, pageSizeLabel, this.pageSizeSelect);
+    shadow.replaceChildren(container);
+  }
+}
+
+
 /** Event (of type "paginate") emitted when PageController indicates that a different page is requested */
 export class PaginationEvent extends Event {
   /** The number of rows to be skipped, or the index of the first row on the page to be shown */
@@ -221,7 +380,7 @@ export class PaginationEvent extends Event {
 
 /**
  * Web Component for pagination controls
- * Shows the user 5 buttons corresponding to the first, previous, current, next, and last pages
+ * Shows the user 5 buttons corresponding to the first, previous, current, next, and last pages (labelled with page numbers)
  * The buttons are disabled if they would not change the pagination. For example, when the user is on the first page, the first, previous, and current buttons are disabled.
  * Provides a select input for choosing the page size
  * Takes an attribute "cardinality" representing the total number of rows across all pages in the paginated table
@@ -265,3 +424,31 @@ export class PageController extends PageInputs {
   }
 }
 
+/**
+ * Web Component for pagination controls
+ * Shows the user 5 buttons corresponding to the first, previous, current, next, and last pages (labelled with row ranges)
+ * The buttons are disabled if they would not change the pagination. For example, when the first row is on the current page, the first, previous, and current buttons are disabled.
+ * Provides a select input for choosing the page size
+ * Emits a PaginationEvent when the user requests a different page to be shown
+ * If you want multiple sets of controls to share a state object, use the underlying PageInputsV2 instead of PageControllerV2
+ */
+export class PageControllerV2 extends PageInputsV2 {
+  private pager: PagePromulgator = new PagePromulgator(this.DEFAULT_PAGE_SIZE, 0);
+
+  constructor() {
+    super();
+    this.pager.registerCallback((newState: PaginatorState)=>{
+      this.dispatchEvent(new PaginationEvent(newState.skip, newState.take));
+    }, ['skip', 'take'], []);
+    this.assignPagePromulgator(this.pager);
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.pager.updateState({pageSize: this.DEFAULT_PAGE_SIZE, skip: 0, take: 0, cardinality: 0}, true);
+  }
+
+  setCardinality(cardinality: number) {
+    this.pager.updateState({cardinality, take: computeTake(this.pager.state.skip, this.pager.state.pageSize, cardinality)});
+  }
+}

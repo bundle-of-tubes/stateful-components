@@ -85,37 +85,29 @@ Updates the state to use the last full page
 pager.last();
 ```
 
-### PageInputs
+### PageInputsV2
 
 An HTMLElement with an open shadow, five buttons, and a select representing a way for the user to request changes to the paging
 
-Unless you want the same state reflected in multiple `PageInputs` instances, `PageController` will be more convenient to use
+Unless you want the same state reflected in multiple `PageInputsV2` instances, `PageControllerV2` will be more convenient to use
 
-#### PageInputs.prototype.DEFAULT_PAGE_SIZE
+#### PageInputsV2.prototype.DEFAULT_PAGE_SIZE
 
 The initial value of the select controlling the page size
 
-#### PageInputs.prototype.assignPagePromulgator()
+#### PageInputsV2.prototype.assignPagePromulgator()
 
-Make the `PageInputs` control the state in a `PagePromulgator`
+Make the `PageInputsV2` control the state in a `PagePromulgator`
 
 ##### Parameters
 * pager: a `PagePromulgator` that already has registered callbacks for computing the current page number and the total number of pages
-* pageNumberKey: a `Symbol` representing the key of the registered callback that calculates the page number based on the state of `pager`
-* pageCountKey: a `Symbol` representing the key of the registered callback that calculates the number of pages based on the state of `pager`
 
 ##### Examples
 
 ```javascript
 const pager = new PagePromulgator(20, 99);
-const pageNumberKey = pager.registerCallback((newState)=>{
-  return Math.ceil(newState.skip/newState.pageSize)+1;
-}, [], []);
-const pageCountKey = pager.registerCallback((newState)=>{
-  return Math.max(Math.ceil(newState.cardinality/newState.pageSize), 1);
-}, [], []);
-document.getElementById("thead-pagination").assignPagePromulgator(pager, pageNumberKey, pageCountKey);
-document.getElementById("tfoot-pagination").assignPagePromulgator(pager, pageNumberKey, pageCountKey);
+document.getElementById("thead-pagination").assignPagePromulgator(pager);
+document.getElementById("tfoot-pagination").assignPagePromulgator(pager);
 ```
 
 ### PaginationEvent
@@ -145,8 +137,25 @@ The requested "skip" for the new page
 
 The requested "take" for the new page
 
-### PageController
+### PageControllerV2
 
 An HTMLElement with inputs for controlling pages
 
 Emits a PaginationEvent when the page is changed
+
+#### PageControllerV2.prototype.setCardinality()
+
+Set the maximum number of rows
+
+##### Parameters
+* cardinality: The length of the list being paginated over
+
+##### Examples
+
+```javascript
+document.getElementById('thead-pagination').setCardinality(420);
+```
+
+### PageInputs and PageController
+
+`PageInputs` and `PageController` are similar to `PageInputsV2` and `PageControllerV2` except they show page numbers instead of page ranges on the buttons. Users find this confusing, since buttons that show the same page number can have different behaviors. Also, `PageController` takes `cardinality` as an attribute instead of providing `setCardinality()`.
