@@ -1,6 +1,6 @@
 {
   "name": "@bundle-of-tubes/stateful-components",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": false,
   "description": "A library of Web Components",
   "homepage": "https://github.com/bundle-of-tubes/stateful-components",
@@ -23,7 +23,9 @@
     "prepack": "tsc --project tsconfig.json"
   },
   "dependencies": {
-    "@bundle-of-tubes/state-promulgator": "0.0.1",
+    "@bundle-of-tubes/state-promulgator": "0.0.1"
+  },
+  "devDependencies": {
     "typescript": "^7.0.2"
   }
 }
